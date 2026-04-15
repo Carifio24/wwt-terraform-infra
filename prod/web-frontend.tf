@@ -351,10 +351,6 @@ resource "azurerm_application_gateway" "frontend" {
       backend_http_settings_name = "rehost-http-setting"
       paths = [
         "/constellations/*",
-        "/@*",
-        "/_cxadmin/*",
-        "/_nuxt/*",
-        "/silent-check-sso",
       ]
     }
   }
@@ -362,7 +358,7 @@ resource "azurerm_application_gateway" "frontend" {
   # Second of two path maps that should be kept identical except for HTTP vs. HTTPS
   url_path_map {
     name                               = "anyhost-http-path-routing"
-    default_backend_address_pool_name  = "cx-frontend"
+    default_backend_address_pool_name  = "wwtappgw1-nginx-core-prod-backend"
     default_backend_http_settings_name = "rehost-http-setting"
     default_rewrite_rule_set_name      = "global-cors-and-cache"
 
@@ -460,10 +456,7 @@ resource "azurerm_application_gateway" "frontend" {
       backend_address_pool_name  = "cx-frontend"
       backend_http_settings_name = "rehost-http-setting"
       paths = [
-        "/@*",
-        "/_cxadmin/*",
-        "/_nuxt/*",
-        "/silent-check-sso",
+        "/constellations/*",
       ]
     }
   }
