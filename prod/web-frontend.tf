@@ -252,7 +252,7 @@ resource "azurerm_application_gateway" "frontend" {
   # wants to delete-and-recreate them, which seems risky.
   url_path_map {
     name                               = "anyhost-https-path-routing"
-    default_backend_address_pool_name  = "cx-frontend"
+    default_backend_address_pool_name  = "wwtappgw1-nginx-core-prod-backend"
     default_backend_http_settings_name = "rehost-http-setting"
     default_rewrite_rule_set_name      = "global-cors-and-cache"
 
@@ -350,6 +350,7 @@ resource "azurerm_application_gateway" "frontend" {
       backend_address_pool_name  = "cx-frontend"
       backend_http_settings_name = "rehost-http-setting"
       paths = [
+        "/constellations/*",
         "/@*",
         "/_cxadmin/*",
         "/_nuxt/*",
