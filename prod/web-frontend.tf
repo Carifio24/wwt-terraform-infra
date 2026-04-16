@@ -74,6 +74,11 @@ resource "azurerm_application_gateway" "frontend" {
     identity_ids = [azurerm_user_assigned_identity.gateway.id]
   }
 
+  ssl_policy {
+    policy_type = "Predefined"
+    policy_name = "AppGwSslPolicy20220101"
+  }
+
   autoscale_configuration {
     max_capacity = 20
     min_capacity = 2
