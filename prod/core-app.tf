@@ -560,7 +560,7 @@ resource "azurerm_linux_web_app" "core_nginx" {
 
     # Added 2022 Sep to match ground truth:
     ftps_state              = "AllAllowed"
-    scm_minimum_tls_version = "1.0"
+    scm_minimum_tls_version = "1.2"
     use_32_bit_worker       = false
   }
 }
