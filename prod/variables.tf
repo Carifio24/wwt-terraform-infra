@@ -146,3 +146,18 @@ variable "keyvaultAcmebotAuthClientId" {
   // get value from: func-wwtprod-kvacmebot Function App -> Authentication -> Microsoft identity provider
   description = "The client ID for the keyvault-acmebot Active Directory connection"
 }
+
+// Image uploader
+
+variable "uploaderDbAdminPassword" {
+  // Sync with LastPass. Arbitrary, not connected to any external services.
+  description = "The administrator password for the image uploader's PostgreSQL database"
+  sensitive   = true
+}
+
+variable "uploaderApiKeys" {
+  // Sync with LastPass. Placeholder auth until the uploader uses Keycloak; the
+  // pipeline's smoke test and the frontend build use one of these keys.
+  description = "Comma-separated list of API keys accepted by the image uploader"
+  sensitive   = true
+}
