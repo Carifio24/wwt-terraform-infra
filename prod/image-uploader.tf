@@ -123,6 +123,17 @@ resource "azurerm_role_assignment" "wwtu_storage" {
   principal_id         = azurerm_user_assigned_identity.wwtu.principal_id
 }
 
+# The service principal behind the Azure DevOps service connection that the
+# uploader's pipeline deploys with (`aas@wwtadmindotnetfoundation`; ci/deploy.sh).
+# It has no subscription-wide role, so it needs one here to run the migrate job,
+# update the apps and upload the frontend
+resource "azurerm_role_assignment" "wwtu_pipeline" {
+  scope                = azurerm_resource_group.wwtu.id
+  role_definition_name = "Contributor"
+  principal_id         = "a5d69746-9881-4aae-8679-c4578c0cb83e"
+  principal_type       = "ServicePrincipal"
+}
+
 # Database
 
 resource "azurerm_private_dns_zone" "wwtu_db" {
