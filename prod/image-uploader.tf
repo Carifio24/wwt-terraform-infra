@@ -3,7 +3,8 @@
 # Users upload images; workers place them on the sky (WCS/AVM, or plate solving
 # with astrometry.net), tile them with toasty, and publish WTML. Pieces:
 #
-# - A Container Apps environment in its own vnet, holding:
+# - A Container Apps environment in its own vnet, logging to its own Log
+#   Analytics workspace, holding:
 #   - `api`: the FastAPI app (public HTTPS ingress)
 #   - `worker-light`, `worker-solve`, `worker-heavy`: Celery workers on the
 #     `light`, `solve` and `heavy` queues
@@ -93,6 +94,9 @@ resource "azurerm_subnet" "wwtu_db" {
   resource_group_name  = azurerm_resource_group.wwtu.name
   virtual_network_name = azurerm_virtual_network.wwtu.name
   address_prefixes     = ["10.20.2.0/24"]
+  # Azure adds this endpoint itself when a Postgres Flexible Server is placed in
+  # the subnet; declare it so Terraform doesn't try to remove it.
+  service_endpoints = ["Microsoft.Storage"]
 
   delegation {
     name = "postgres"
@@ -236,13 +240,27 @@ resource "azurerm_storage_share" "wwtu_index" {
   quota              = 100 # GiB
 }
 
+# Logs. The uploader has its own workspace rather than sharing WWT's default
+# one, so that its (sometimes verbose) solver output can't use up the shared
+# workspace's daily ingestion cap. It has a cap of its own, too: once 1 GB has
+# been ingested in a day, further logs are dropped until the next day.
+
+resource "azurerm_log_analytics_workspace" "wwtu" {
+  name                = "${var.prefix}-wwtu-logs"
+  location            = azurerm_resource_group.wwtu.location
+  resource_group_name = azurerm_resource_group.wwtu.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  daily_quota_gb      = 1
+}
+
 # Container Apps
 
 resource "azurerm_container_app_environment" "wwtu" {
   name                       = "${var.prefix}-wwtu"
   location                   = azurerm_resource_group.wwtu.location
   resource_group_name        = azurerm_resource_group.wwtu.name
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.wwt.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.wwtu.id
   infrastructure_subnet_id   = azurerm_subnet.wwtu_apps.id
 
   workload_profile {
