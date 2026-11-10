@@ -12,6 +12,8 @@
 #     truth for every image's state, so losing queued messages (e.g. on a
 #     restart) only delays work; it doesn't corrupt anything.
 #   - a `migrate` job that runs `alembic upgrade head`
+#   - a `reconcile` job, every 5 minutes, that recovers work lost to stopped
+#     workers or lost queue messages (backend/src/wwt_uploader/reconcile.py)
 # - Postgres (Flexible Server), reachable only from the vnet
 # - A storage account with a private `scratch` container (uploads, work files),
 #   a public `public` container (previews, tiles, WTML), the frontend's static
@@ -553,6 +555,54 @@ resource "azurerm_container_app_job" "wwtu_migrate" {
       cpu     = 0.5
       memory  = "1Gi"
       command = ["alembic", "upgrade", "head"]
+
+      env {
+        name        = "WWTU_DATABASE_URL"
+        secret_name = "database-url"
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [template[0].container[0].image]
+  }
+}
+
+# Recovers lost work every 5 minutes: re-queues stages whose worker stopped
+# heartbeating or whose queue message was lost, and re-runs cleanups for deleted
+# images. Runs with the app image, updated by the pipeline like the other apps.
+resource "azurerm_container_app_job" "wwtu_reconcile" {
+  name                         = "${var.prefix}-wwtu-reconcile"
+  location                     = azurerm_resource_group.wwtu.location
+  resource_group_name          = azurerm_resource_group.wwtu.name
+  container_app_environment_id = azurerm_container_app_environment.wwtu.id
+  workload_profile_name        = "Consumption"
+  replica_timeout_in_seconds   = 240
+  replica_retry_limit          = 0
+
+  schedule_trigger_config {
+    cron_expression          = "*/5 * * * *"
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  secret {
+    name  = "database-url"
+    value = local.wwtu_database_url
+  }
+
+  template {
+    container {
+      name    = "reconcile"
+      image   = local.wwtu_images.app
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["python", "-m", "wwt_uploader.reconcile"]
+
+      env {
+        name  = "WWTU_REDIS_URL"
+        value = local.wwtu_env["WWTU_REDIS_URL"]
+      }
 
       env {
         name        = "WWTU_DATABASE_URL"
